@@ -1,17 +1,11 @@
 project_name: asp-eks
 
 builds:
-  - id: cli
+  - id: default
     main: ./main.go
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -s -w
+    goos: [darwin, linux, windows]
+    goarch: [amd64, arm64]
+    ldflags: ["-s -w"]
     binary: asp-eks
 
 archives:
@@ -28,22 +22,15 @@ release:
   github:
     owner: eimarfandino
     name: asp-eks
-  draft: false
-  prerelease: false
 
 brews:
   - name: asp-eks
-    description: "AWS profile switcher for EKS CLI access"
-    homepage: "https://github.com/eimarfandino/asp-eks"
     tap:
       owner: eimarfandino
       name: homebrew-tap
       branch: main
+    description: "AWS profile switcher for EKS CLI access"
+    homepage: "https://github.com/eimarfandino/asp-eks"
     commit_author:
       name: Eimar Bot
       email: bot@eimarfandino.dev
-    folder: Formula
-    install: |
-      bin.install "asp-eks"
-    test: |
-      system "#{bin}/asp-eks", "--help"
