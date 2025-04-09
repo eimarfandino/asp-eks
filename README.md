@@ -1,6 +1,23 @@
 # asp-eks
 
-Tool for moving to a different EKS cluster using AWS profiles
+## 🤔 Why?
+
+I found myself constantly juggling between multiple AWS accounts and EKS clusters, going through the same tedious process:
+- Remembering the correct AWS profile names
+- Running `asp` to switch profiles
+- Logging in via SSO
+- Updating kubeconfig manually
+- Trying to remember which clusters belonged to which account
+
+This tool streamlines this entire workflow into a single command, making it easy to switch between different AWS accounts and their corresponding EKS clusters.
+
+## 🎯 What it does
+
+Tool for moving to a different EKS cluster using AWS profiles. It automatically:
+- Switches AWS profiles
+- Handles SSO login
+- Updates kubeconfig
+- Lists available clusters
 
 ## Prerequisites
 
