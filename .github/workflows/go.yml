@@ -10,6 +10,9 @@ on:
     branches:
       - '**'            # Run build/test on all PRs
 
+permissions:
+  contents: write
+
 jobs:
   build-test:
     name: Build & Test
