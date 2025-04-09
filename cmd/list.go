@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	import "github.com/eimarfandino/asp-eks/awsutils"
 	"fmt"
 
+	"github.com/eimarfandino/asp-eks/awsutils"
 	"github.com/spf13/cobra"
 )
 
