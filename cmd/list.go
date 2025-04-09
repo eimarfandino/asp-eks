@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"eks-aws-profile-switcher/awsutils"
+	import "github.com/eimarfandino/asp-eks/awsutils"
 	"fmt"
 
 	"github.com/spf13/cobra"
