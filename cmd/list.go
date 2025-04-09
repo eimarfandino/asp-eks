@@ -13,12 +13,13 @@ var listCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		profiles, err := awsutils.GetAwsProfiles()
 		if err != nil {
-			fmt.Println("Error:", err)
+			fmt.Fprintln(cmd.OutOrStdout(), "Error:", err)
 			return
 		}
-		fmt.Println("Available profiles:")
+
+		fmt.Fprintln(cmd.OutOrStdout(), "Available profiles:")
 		for _, profile := range profiles {
-			fmt.Println(profile)
+			fmt.Fprintln(cmd.OutOrStdout(), profile)
 		}
 	},
 }
