@@ -31,7 +31,7 @@ package:
   stage: package
   image: alpine:latest
   script:
-    - apk add --no-cache zip sha256sum
+    - apk add --no-cache zip coreutils
     - cd dist
     - |
       for DIR in */; do
