@@ -62,7 +62,12 @@ asp-eks [command]
 
 ### Generate Profiles Command
 
+
 The `generate-profiles` command automatically creates AWS profiles for all accounts and roles accessible through your SSO configuration. This is particularly useful when you have access to multiple AWS accounts through SSO and want to avoid manually creating profiles for each account/role combination.
+
+**Important:**
+- If you do not have a `~/.aws/config` file, you must provide the `--sso-start-url` flag to specify your AWS SSO start URL. The tool will create a minimal config file for you.
+- If you already have a config file with SSO configuration, the flag is optional and will override the SSO start URL for that run.
 
 **Features:**
 - Automatically discovers all accounts and roles available through SSO
@@ -72,22 +77,26 @@ The `generate-profiles` command automatically creates AWS profiles for all accou
 
 **Options:**
 - `--dry-run`: Show what profiles would be generated without writing to config file
-- `--region, -r`: Default AWS region for generated profiles (default "us-east-1")
+- `--region, -r`: Default AWS region for generated profiles (default "eu-central-1")
+- `--sso-start-url`: Override or set the SSO start URL for generated profiles (required if no config file exists)
 
 **Prerequisites:**
-- You must be logged in to AWS SSO (run `aws sso login --profile <your-sso-profile>` first)
-- You must have at least one SSO profile configured in `~/.aws/config`
+- You must be logged in to AWS SSO (run `aws sso login --profile DEFAULT-SSO` after first run)
+- You must have at least one SSO profile configured in `~/.aws/config`, or provide `--sso-start-url` to create one
 
 **Examples:**
 ```bash
-# Preview profiles that would be generated
-asp-eks generate-profiles --dry-run
+# Preview profiles that would be generated (with a new SSO start URL)
+asp-eks generate-profiles --dry-run --sso-start-url https://your-sso-url.awsapps.com/start
 
-# Generate profiles with default region us-east-1
-asp-eks generate-profiles
+# Generate profiles (will require --sso-start-url if no config exists)
+asp-eks generate-profiles --sso-start-url https://your-sso-url.awsapps.com/start
 
 # Generate profiles with custom default region
-asp-eks generate-profiles --region eu-central-1
+asp-eks generate-profiles --region eu-central-1 --sso-start-url https://your-sso-url.awsapps.com/start
+
+# If you already have a config file, you can omit the flag:
+asp-eks generate-profiles
 ```
 
 ### Use Command Options
