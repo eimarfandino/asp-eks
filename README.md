@@ -185,6 +185,35 @@ go build -o asp-eks
 sudo mv asp-eks /usr/local/bin/
 ```
 
+## 🍺 Homebrew Installation (Recommended)
+
+You can install asp-eks easily using Homebrew:
+
+1. Add the tap:
+   ```bash
+   brew tap eimarfandino/asp-eks https://github.com/eimarfandino/homebrew-asp-eks.git
+   ```
+2. Install asp-eks:
+   ```bash
+   brew install asp-eks
+   ```
+3. Upgrade to the latest version:
+   ```bash
+   brew upgrade asp-eks
+   ```
+4. Run and verify:
+   ```bash
+   asp-eks --help
+   ```
+
+This will automatically download the correct binary for your system (Apple Silicon or Intel Mac).
+
+If you encounter any issues, please ensure you have the latest version of Homebrew and that your tap is up to date:
+```bash
+brew update
+brew tap eimarfandino/asp-eks
+```
+
 ### Examples
 
 List available AWS profiles:
