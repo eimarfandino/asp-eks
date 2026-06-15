@@ -198,24 +198,18 @@ sudo mv asp-eks /usr/local/bin/
 ## 🍺 Homebrew Installation (Recommended)
 
 ```bash
-brew tap eimarfandino/asp-eks https://github.com/eimarfandino/homebrew-asp-eks.git
-brew install asp-eks
+brew tap eimarfandino/tap https://github.com/eimarfandino/homebrew-tap.git
+brew install eimarfandino/tap/asp-eks
 ```
 
 To upgrade:
 ```bash
-brew upgrade asp-eks
+brew upgrade eimarfandino/tap/asp-eks
 ```
 
 Verify:
 ```bash
 asp-eks --help
-```
-
-If you encounter any issues, ensure your tap is up to date:
-```bash
-brew update
-brew tap eimarfandino/asp-eks
 ```
 
 ## Global Flags
