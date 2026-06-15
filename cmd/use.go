@@ -18,31 +18,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd/api"
 )
 
-// AzureConfig holds the Azure authentication configuration
-type AzureConfig struct {
-	ServerID string
-	ClientID string
-	TenantID string
-}
-
-// getAzureConfig returns the appropriate Azure configuration based on the dev flag
-func getAzureConfig(dev bool) AzureConfig {
-	if dev {
-		return AzureConfig{
-			ServerID: "6dae42f8-4368-4678-94ff-3960e28e3630",
-			ClientID: "6dae42f8-4368-4678-94ff-3960e28e3630",
-			TenantID: "f8cdef31-a31e-4b4a-93e4-5f571e91255a",
-		}
-	}
-
-	// Default/production configuration
-	return AzureConfig{
-		ServerID: "92996fd8-8fc1-4676-ab8f-63a70ebf20dd",
-		ClientID: "92996fd8-8fc1-4676-ab8f-63a70ebf20dd",
-		TenantID: "fa4a04c1-369d-4205-9eb1-84f8de4b3248",
-	}
-}
-
 var execCommand = exec.Command
 var outputWriter io.Writer = os.Stdout
 
@@ -52,8 +27,7 @@ var clusterProvider ClusterProvider = &AWSClusterProvider{}
 // credentialsValidator can be mocked in tests
 var credentialsValidator = isCredentialsValid
 
-// Flag to determine if dev configuration should be used
-var devFlag bool
+var exportFlag bool
 
 var useCmd = &cobra.Command{
 	Use:   "use [profile]",
@@ -62,6 +36,13 @@ var useCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		profile := args[0]
 		ctx := context.Background()
+
+		// If export flag is set, redirect informational output to stderr
+		originalWriter := outputWriter
+		if exportFlag {
+			outputWriter = os.Stderr
+		}
+		defer func() { outputWriter = originalWriter }()
 
 		// Try to login via SSO first
 		if err := ensureSSO(profile); err != nil {
@@ -95,7 +76,7 @@ var useCmd = &cobra.Command{
 
 		if len(clusterList) == 1 {
 			fmt.Fprintln(outputWriter, "Only one cluster found:", clusterList[0])
-			updateKubeconfig(profile, clusterList[0], devFlag)
+			updateKubeconfig(profile, clusterList[0], exportFlag)
 			return
 		}
 
@@ -119,16 +100,16 @@ var useCmd = &cobra.Command{
 		}
 
 		selected := clusterList[choice-1]
-		updateKubeconfig(profile, selected, devFlag)
+		updateKubeconfig(profile, selected, exportFlag)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(useCmd)
-	useCmd.Flags().BoolVar(&devFlag, "dev", false, "Use development Azure configuration")
+	useCmd.Flags().BoolVar(&exportFlag, "export", false, "Output shell commands for eval (export AWS_PROFILE)")
 }
 
-func updateKubeconfig(profile, cluster string, dev bool) {
+func updateKubeconfig(profile, cluster string, export bool) {
 	fmt.Fprintln(outputWriter, "Updating kubeconfig for cluster:", cluster)
 
 	ctx := context.Background()
@@ -149,14 +130,9 @@ func updateKubeconfig(profile, cluster string, dev bool) {
 	fmt.Fprintf(outputWriter, "Successfully updated kubeconfig for cluster: %s\n", cluster)
 	fmt.Fprintf(outputWriter, "Current context set to: %s\n", cluster)
 
-	// Add Azure user configuration
-	if err := addAzureUser(dev); err != nil {
-		fmt.Fprintf(outputWriter, "Warning: Failed to add Azure user configuration: %v\n", err)
-	}
-
-	// Add Azure context for this cluster
-	if err := addAzureContext(cluster); err != nil {
-		fmt.Fprintf(outputWriter, "Warning: Failed to add Azure context: %v\n", err)
+	// If export flag is set, output shell commands
+	if export {
+		fmt.Fprintf(os.Stdout, "export AWS_PROFILE=%s\n", profile)
 	}
 }
 
@@ -246,129 +222,34 @@ func createOrUpdateKubeContext(profile string, clusterInfo *ClusterInfo) error {
 	return nil
 }
 
-func addAzureUser(dev bool) error {
-	configType := "production"
-	if dev {
-		configType = "development"
-	}
-	fmt.Fprintf(outputWriter, "Adding Azure user configuration (%s)...\n", configType)
-
-	configPath := getDefaultKubeConfigPath()
-	if configPath == "" {
-		return fmt.Errorf("could not determine kubeconfig path")
-	}
-
-	loadingRules := clientcmd.ClientConfigLoadingRules{
-		Precedence: []string{configPath},
-	}
-	config, err := loadingRules.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load kubeconfig: %w", err)
-	}
-
-	// Get Azure configuration based on dev flag
-	azureConfig := getAzureConfig(dev)
-
-	// Create azure-user with kubelogin configuration
-	authInfo := config.AuthInfos["azure-user"]
-	if authInfo == nil {
-		authInfo = api.NewAuthInfo()
-	}
-	authInfo.LocationOfOrigin = configPath
-	authInfo.Exec = &api.ExecConfig{
-		APIVersion: "client.authentication.k8s.io/v1beta1",
-		Command:    "kubelogin",
-		Args: []string{
-			"get-token",
-			"--environment", "AzurePublicCloud",
-			"--server-id", azureConfig.ServerID,
-			"--client-id", azureConfig.ClientID,
-			"--tenant-id", azureConfig.TenantID,
-		},
-	}
-
-	config.AuthInfos["azure-user"] = authInfo
-
-	// Write config
-	configAccess := clientcmd.NewDefaultPathOptions()
-	configAccess.GlobalFile = configPath
-	if err := clientcmd.ModifyConfig(configAccess, *config, true); err != nil {
-		return fmt.Errorf("failed to write kubeconfig: %w", err)
-	}
-
-	return nil
-}
-
-func addAzureContext(cluster string) error {
-	fmt.Fprintln(outputWriter, "Adding Azure context for cluster...")
-
-	configPath := getDefaultKubeConfigPath()
-	if configPath == "" {
-		return fmt.Errorf("could not determine kubeconfig path")
-	}
-
-	loadingRules := clientcmd.ClientConfigLoadingRules{
-		Precedence: []string{configPath},
-	}
-	config, err := loadingRules.Load()
-	if err != nil {
-		return fmt.Errorf("failed to load kubeconfig: %w", err)
-	}
-
-	// Get the cluster ARN from the existing context
-	var clusterArn string
-	if existingContext, exists := config.Contexts[cluster]; exists {
-		clusterArn = existingContext.Cluster
-	} else {
-		fmt.Fprintln(outputWriter, "Warning: Could not find existing context, using cluster name as fallback")
-		clusterArn = cluster
-	}
-
-	if clusterArn == "" {
-		fmt.Fprintln(outputWriter, "Warning: Empty cluster ARN, using cluster name as fallback")
-		clusterArn = cluster
-	}
-
-	contextName := fmt.Sprintf("entraid-%s", cluster)
-
-	// Create or update Azure context
-	context := config.Contexts[contextName]
-	if context == nil {
-		context = api.NewContext()
-	}
-	context.LocationOfOrigin = configPath
-	context.Cluster = clusterArn
-	context.AuthInfo = "azure-user"
-
-	config.Contexts[contextName] = context
-
-	// Write config
-	configAccess := clientcmd.NewDefaultPathOptions()
-	configAccess.GlobalFile = configPath
-	if err := clientcmd.ModifyConfig(configAccess, *config, true); err != nil {
-		return fmt.Errorf("failed to write kubeconfig: %w", err)
-	}
-
-	return nil
-}
-
-// ensureSSO attempts to validate credentials and provides helpful messaging if they're invalid
+// ensureSSO attempts to validate credentials and automatically runs sso login if they're invalid
 func ensureSSO(profile string) error {
 	fmt.Fprintf(outputWriter, "Checking credentials for profile %s...\n", profile)
 
 	ctx := context.Background()
 
-	// Check if credentials work using AWS SDK
 	if credentialsValidator(ctx, profile) {
 		fmt.Fprintln(outputWriter, "Credentials are valid")
 		return nil
 	}
 
-	fmt.Fprintf(outputWriter, "Credentials for profile '%s' are expired or invalid.\n", profile)
-	fmt.Fprintf(outputWriter, "Please run: aws sso login --profile %s\n", profile)
-	fmt.Fprintln(outputWriter, "Then try this command again.")
+	fmt.Fprintf(outputWriter, "Credentials for profile '%s' are expired or invalid. Attempting SSO login...\n", profile)
 
-	return fmt.Errorf("credentials are invalid for profile %s", profile)
+	cmd := execCommand("aws", "sso", "login", "--profile", profile)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = outputWriter
+	cmd.Stderr = outputWriter
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("SSO login failed for profile %s: %w", profile, err)
+	}
+
+	// Validate again after login
+	if !credentialsValidator(ctx, profile) {
+		return fmt.Errorf("credentials still invalid after SSO login for profile %s", profile)
+	}
+
+	fmt.Fprintln(outputWriter, "SSO login successful")
+	return nil
 }
 
 // isCredentialsValid checks if the current credentials are valid using AWS SDK
@@ -382,5 +263,3 @@ func isCredentialsValid(ctx context.Context, profile string) bool {
 	_, err = stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	return err == nil
 }
-
-// Helper functions to extract region and account from cluster context - removed as not needed with improved approach above
