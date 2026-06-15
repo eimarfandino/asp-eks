@@ -58,10 +58,23 @@ asp-eks [command]
 - `generate-profiles`: Generate AWS profiles for all SSO accounts and roles
 - `help`: Help about any command
 - `list`: List available AWS profiles
+- `search`: Search for AWS profiles by name (case-insensitive substring match)
 - `use`: Use a specific AWS profile and set kubeconfig for an EKS cluster
 
-### Generate Profiles Command
+### Search Command
 
+```bash
+asp-eks search <query>
+```
+
+Case-insensitive substring search across all configured AWS profile names.
+
+```bash
+asp-eks search np20       # matches cluster-np20-dev, np20-dev-cluster, etc.
+asp-eks search prod       # matches any profile containing "prod"
+```
+
+### Generate Profiles Command
 
 The `generate-profiles` command automatically creates AWS profiles for all accounts and roles accessible through your SSO configuration. This is particularly useful when you have access to multiple AWS accounts through SSO and want to avoid manually creating profiles for each account/role combination.
 
@@ -99,45 +112,56 @@ asp-eks generate-profiles --region eu-central-1 --sso-start-url https://your-sso
 asp-eks generate-profiles
 ```
 
-### Use Command Options
+### Use Command
 
-The `use` command supports the following flag:
+```bash
+asp-eks use <profile-name>
+```
 
-- `--dev`: Use development Azure configuration instead of production configuration
-
-When using the `--dev` flag, the tool will configure Azure authentication with development-specific tenant and client IDs for kubelogin integration. This is useful when working with development environments that require different Azure AD configurations.
+If credentials are expired, `asp-eks` will automatically run `aws sso login --profile <profile>` and retry — no need to login manually first.
 
 **Examples:**
 ```bash
-# Use production Azure configuration (default)
+# Switch profile and update kubeconfig
 asp-eks use my-profile
+```
 
-# Use development Azure configuration
-asp-eks use my-profile --dev
+#### Shell wrapper (recommended)
+
+Because a subprocess cannot modify the parent shell's environment directly, the recommended way to also set `AWS_PROFILE` in your current shell is via a shell function in your `.zshrc` or `.bashrc`:
+
+```sh
+# ~/.zshrc
+aeks() {
+  asp-eks "$@"
+  [[ "$1" == "use" ]] && export AWS_PROFILE="$2"
+}
+```
+
+> **Note:** The name `asp` is taken by the oh-my-zsh `aws` plugin, hence `aeks`.
+
+This wrapper supports all commands:
+```bash
+aeks use my-profile   # switches profile, updates kubeconfig, exports AWS_PROFILE
+aeks list             # lists available profiles
 ```
 
 ## 🔧 Installation
 
 ### Download Latest Release (Recommended)
 
-The most reliable way to install asp-eks is to download the latest release from GitLab:
+1. Visit the releases page: https://github.com/eimarfandino/asp-eks/releases
+2. Download the appropriate binary for your operating system
 
-1. **Download the latest release:**
-   - Visit the releases page: https://github.com/eimarfandino/asp-eks/releases
-   - Download the appropriate binary for your operating system
+```bash
+# Make the binary executable
+chmod +x asp-eks
 
-2. **Install the binary:**
-   ```bash
-   # Make the binary executable
-   chmod +x asp-eks
-   
-   # Move to your PATH
-   sudo mv asp-eks /usr/local/bin/
-   ```
+# Move to your PATH
+sudo mv asp-eks /usr/local/bin/
+```
 
 ### Quick One-Line Installation
-
-For a quick installation, you can use this one-liner to download and run the installation script:
 
 ```bash
 # Set your GitLab token first
@@ -160,110 +184,43 @@ The script will automatically:
 
 **To set up your GitLab token:**
 1. Create a personal access token in GitLab with `read_api` and `read_repository` scopes
-2. Export it as an environment variable: `export GITLAB_TOKEN=your_token_here`
-
-3. **Verify installation:**
-   ```bash
-   asp-eks --help
-   ```
+2. Export it: `export GITLAB_TOKEN=your_token_here`
 
 ### Manual Installation (Build from Source)
 
-If you prefer to build from source:
-
 ```bash
-# Clone the repository
 git clone https://github.com/eimarfandino/asp-eks.git
-
-# Navigate to the directory
 cd asp-eks
-
-# Build the binary
 go build -o asp-eks
-
-# Move the binary to your PATH
 sudo mv asp-eks /usr/local/bin/
 ```
 
 ## 🍺 Homebrew Installation (Recommended)
 
-You can install asp-eks easily using Homebrew:
+```bash
+brew tap eimarfandino/asp-eks https://github.com/eimarfandino/homebrew-asp-eks.git
+brew install asp-eks
+```
 
-1. Add the tap:
-   ```bash
-   brew tap eimarfandino/asp-eks https://github.com/eimarfandino/homebrew-asp-eks.git
-   ```
-2. Install asp-eks:
-   ```bash
-   brew install asp-eks
-   ```
-3. Upgrade to the latest version:
-   ```bash
-   brew upgrade asp-eks
-   ```
-4. Run and verify:
-   ```bash
-   asp-eks --help
-   ```
+To upgrade:
+```bash
+brew upgrade asp-eks
+```
 
-This will automatically download the correct binary for your system (Apple Silicon or Intel Mac).
+Verify:
+```bash
+asp-eks --help
+```
 
-If you encounter any issues, please ensure you have the latest version of Homebrew and that your tap is up to date:
+If you encounter any issues, ensure your tap is up to date:
 ```bash
 brew update
 brew tap eimarfandino/asp-eks
 ```
 
-### Examples
-
-List available AWS profiles:
-```bash
-asp-eks list
-```
-
-Switch to a specific profile and configure EKS:
-```bash
-asp-eks use <profile-name>
-```
-
-Switch to a specific profile with development Azure configuration:
-```bash
-asp-eks use <profile-name> --dev
-```
-
-Get help for a specific command:
-```bash
-asp-eks [command] --help
-```
-
 ## Global Flags
 
 - `-h, --help`: Display help information for asp-eks
-
-## Azure Integration
-
-The tool includes Azure Active Directory integration for enhanced authentication. When using the `use` command, it automatically configures kubelogin for Azure AD authentication with the appropriate tenant and client configurations.
-
-**Azure Configuration:**
-- **Production (default)**: Uses production Azure AD tenant and client IDs
-- **Development (`--dev` flag)**: Uses development Azure AD tenant and client IDs
-
-This creates an additional Azure context named `entraid-<cluster-name>` that you can switch to for Azure AD authentication:
-```bash
-kubectl config use-context entraid-<cluster-name>
-```
-
-## Note
-
-The tool will automatically:
-1. Switch AWS profile
-2. Handle SSO login if needed
-3. Update kubeconfig for EKS cluster access
-
-For more detailed information about a specific command, use:
-```bash
-asp-eks [command] --help
-```
 
 ## 🤝 Contributing
 
