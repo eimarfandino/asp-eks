@@ -1,0 +1,4 @@
+builds:
+  - binary: asp-eks
+    ldflags:
+      - -s -w -X github.com/eimarfandino/asp-eks/cmd.Version={{.Version}}
